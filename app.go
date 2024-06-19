@@ -6,15 +6,22 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/ying32/govcl/vcl"
+
+	"auto-hosts/log"
 )
 
 type App struct {
-	// app 工作目录
 	wd string
-
-	// app ui 主窗口
 	ui *MainForm
+
+	scanner *Scanner
+
+	devices []*Device
+
+	domains     []string
+	nameservers []string
 }
 
 func NewApp() *App {
@@ -42,13 +49,12 @@ func (a *App) init() {
 	// 设置 app 工作目录
 	err = os.Chdir(a.wd)
 	if err != nil {
-		panic(err)
+		panic(errors.WithStack(err))
 	}
-
-	a.initUI()
 }
 
-func (a *App) initUI() {
+func (a *App) showUI() {
+	vcl.DEBUG = false
 	vcl.Application.Initialize()
 	vcl.Application.SetMainFormOnTaskBar(true)
 
@@ -58,20 +64,27 @@ func (a *App) initUI() {
 	// 设置窗口显示事件
 	a.ui.SetOnShow(func(sender vcl.IObject) {
 		go func() {
-			dev := GetDevices()
+			a.devices = GetDevices()
 			vcl.ThreadSync(func() {
-				for _, d := range dev {
+				for _, d := range a.devices {
 					a.ui.devices.Items().Add(d.String())
 				}
 			})
+			log.Info().Msg("devices loaded")
 		}()
+
 		go func() {
-			ls := GetDomains()
+			a.domains = GetDomains()
 			vcl.ThreadSync(func() {
-				for _, l := range ls {
-					a.ui.domain.Lines().Add(l)
+				for _, domain := range a.domains {
+					a.ui.domain.Lines().Add(domain)
 				}
 			})
+			log.Info().Msg("domains loaded")
+		}()
+		go func() {
+			a.nameservers = GetNameservers()
+			log.Info().Msg("nameservers loaded")
 		}()
 	})
 

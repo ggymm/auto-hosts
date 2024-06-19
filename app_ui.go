@@ -47,7 +47,7 @@ func (f *MainForm) setupContent() {
 	label.SetParent(f)
 	label.SetCaption("选择设备网卡")
 	label.SetAutoSize(false)
-	label.SetAlignment(types.TaCenter)
+	label.SetAlignment(types.TaLeftJustify)
 
 	combo := vcl.NewComboBox(f)
 	combo.SetParent(f)
@@ -74,8 +74,8 @@ func (f *MainForm) setupContent() {
 	})
 
 	label.SetBounds(20, 24, 100, 25)
-	combo.SetBounds(140, 20, 560, 25)
-	button.SetBounds(720, 20, 160, 25)
+	combo.SetBounds(120, 20, 420, 25)
+	button.SetBounds(560, 20, 140, 25)
 
 	domain := vcl.NewMemo(f)
 	domain.SetParent(f)
@@ -96,15 +96,15 @@ func (f *MainForm) setupContent() {
 
 	})
 
-	domain.SetBounds(20, 65, 420, 448)
-	result.SetBounds(460, 65, 420, 448)
-	button.SetBounds(20, 530, 860, 32)
+	domain.SetBounds(20, 65, 330, 248)
+	result.SetBounds(370, 65, 330, 248)
+	button.SetBounds(20, 330, 680, 32)
 }
 
 func (f *MainForm) OnFormCreate(_ vcl.IObject) {
 	f.SetCaption("DNS查询工具")
-	f.SetWidth(900)
-	f.SetHeight(600)
+	f.SetWidth(720)
+	f.SetHeight(400)
 	f.SetPosition(types.PoScreenCenter)
 	f.SetBorderStyle(types.BsSingle)
 	f.SetOnShow(func(_ vcl.IObject) {

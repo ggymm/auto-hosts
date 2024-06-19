@@ -108,7 +108,6 @@ func (s *Scanner) write(l ...gopacket.SerializableLayer) error {
 			Str("1.dev", s.dev).
 			Str("2.loIp", s.loIp.String()).
 			Str("3.loHw", s.loHw.String()).
-			Str("4.gwIp", s.gwIp.String()).
 			Err(errors.WithStack(err)).Msg("serialize packet error")
 		return err
 	}

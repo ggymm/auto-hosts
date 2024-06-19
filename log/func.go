@@ -6,20 +6,8 @@ import (
 
 var log zerolog.Logger
 
-func Trace() *zerolog.Event {
-	return log.Trace()
-}
-
-func Debug() *zerolog.Event {
-	return log.Debug()
-}
-
 func Info() *zerolog.Event {
 	return log.Info()
-}
-
-func Warn() *zerolog.Event {
-	return log.Warn()
 }
 
 func Error() *zerolog.Event {
@@ -27,9 +15,5 @@ func Error() *zerolog.Event {
 }
 
 func Fatal() *zerolog.Event {
-	return log.Fatal()
-}
-
-func Panic() *zerolog.Event {
-	return log.Panic().Stack()
+	return log.Fatal().Stack()
 }
