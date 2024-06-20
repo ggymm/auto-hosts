@@ -8,97 +8,73 @@ import (
 type MainForm struct {
 	*vcl.TForm
 
-	fix     *vcl.TComboBox
-	devices *vcl.TComboBox
+	devsCombo   *vcl.TComboBox
+	renewButton *vcl.TButton
 
-	domain *vcl.TMemo
-	result *vcl.TMemo
+	domainMemo *vcl.TMemo
+	resultMemo *vcl.TMemo
+
+	searchButton   *vcl.TButton
+	generateButton *vcl.TButton
 }
 
-func (f *MainForm) fixComboBox() {
-	f.fix.SetFocus()
-}
-
-func (f *MainForm) setupMenu() {
-	menu := vcl.NewMainMenu(f)
-
-	item := vcl.NewMenuItem(f)
-	item.SetCaption("DNS服务器(&N)")
-	menu.Items().Add(item)
-
-	item = vcl.NewMenuItem(f)
-	item.SetCaption("域名列表(&D)")
-	menu.Items().Add(item)
-
-	item = vcl.NewMenuItem(f)
-	item.SetCaption("帮助(&H)")
-	menu.Items().Add(item)
-
-	item = vcl.NewMenuItem(f)
-	item.SetCaption("退出(&Q)")
-	item.SetOnClick(func(sender vcl.IObject) {
-		f.Close()
-	})
-	menu.Items().Add(item)
-}
-
-func (f *MainForm) setupContent() {
+func (f *MainForm) setupView() {
 	label := vcl.NewLabel(f)
 	label.SetParent(f)
-	label.SetCaption("选择设备网卡")
+	label.SetCaption("选择网卡")
 	label.SetAutoSize(false)
-	label.SetAlignment(types.TaLeftJustify)
+	label.SetAlignment(types.TaCenter)
 
-	combo := vcl.NewComboBox(f)
-	combo.SetParent(f)
-	combo.SetStyle(types.CsDropDownList)
-	combo.SetOnSelect(func(sender vcl.IObject) {
-	})
-	combo.SetOnCloseUp(func(_ vcl.IObject) {
-		f.fixComboBox()
-	})
-	f.devices = combo
+	f.devsCombo = vcl.NewComboBox(f)
+	f.devsCombo.SetParent(f)
+	f.devsCombo.SetStyle(types.CsDropDownList)
 
-	button := vcl.NewButton(f)
-	button.SetParent(f)
-	button.SetCaption("刷新网卡列表")
-	button.SetOnClick(func(sender vcl.IObject) {
-		go func() {
-			dev := GetDevices()
-			vcl.ThreadSync(func() {
-				for _, d := range dev {
-					combo.Items().Add(d.String())
-				}
-			})
-		}()
-	})
+	f.renewButton = vcl.NewButton(f)
+	f.renewButton.SetParent(f)
+	f.renewButton.SetCaption("刷新网卡")
 
-	label.SetBounds(20, 24, 100, 25)
-	combo.SetBounds(120, 20, 420, 25)
-	button.SetBounds(560, 20, 140, 25)
+	label.SetBounds(20, 28, 80, 25)
+	f.devsCombo.SetBounds(100, 24, 480, 25)
+	f.renewButton.SetBounds(600, 24, 100, 25)
 
-	domain := vcl.NewMemo(f)
-	domain.SetParent(f)
-	domain.SetReadOnly(true)
-	domain.SetScrollBars(types.SsAutoBoth)
-	f.domain = domain
+	f.domainMemo = vcl.NewMemo(f)
+	f.domainMemo.SetParent(f)
+	f.domainMemo.SetReadOnly(true)
+	f.domainMemo.SetScrollBars(types.SsAutoBoth)
 
-	result := vcl.NewMemo(f)
-	result.SetParent(f)
-	result.SetReadOnly(true)
-	result.SetScrollBars(types.SsAutoBoth)
-	f.result = result
+	f.resultMemo = vcl.NewMemo(f)
+	f.resultMemo.SetParent(f)
+	f.resultMemo.SetReadOnly(true)
+	f.resultMemo.SetScrollBars(types.SsAutoBoth)
 
-	button = vcl.NewButton(f)
-	button.SetParent(f)
-	button.SetCaption("开始查询")
-	button.SetOnClick(func(sender vcl.IObject) {
+	f.searchButton = vcl.NewButton(f)
+	f.searchButton.SetParent(f)
+	f.searchButton.SetCaption("开始查询")
 
-	})
+	f.generateButton = vcl.NewButton(f)
+	f.generateButton.SetParent(f)
+	f.generateButton.SetCaption("生成文件")
 
-	domain.SetBounds(20, 65, 330, 248)
-	result.SetBounds(370, 65, 330, 248)
-	button.SetBounds(20, 330, 680, 32)
+	f.domainMemo.SetBounds(20, 70, 330, 258)
+	f.resultMemo.SetBounds(370, 70, 330, 258)
+	f.searchButton.SetBounds(20, 348, 330, 32)
+	f.generateButton.SetBounds(370, 348, 330, 32)
+}
+
+func (f *MainForm) enableView() {
+	f.devsCombo.SetEnabled(true)
+	f.renewButton.SetEnabled(true)
+
+	f.searchButton.SetEnabled(true)
+	f.generateButton.SetEnabled(true)
+}
+
+func (f *MainForm) disableView() {
+	f.devsCombo.SetEnabled(false)
+	f.renewButton.SetEnabled(false)
+
+	f.searchButton.SetEnabled(false)
+	f.generateButton.SetEnabled(false)
 }
 
 func (f *MainForm) OnFormCreate(_ vcl.IObject) {
@@ -107,16 +83,6 @@ func (f *MainForm) OnFormCreate(_ vcl.IObject) {
 	f.SetHeight(400)
 	f.SetPosition(types.PoScreenCenter)
 	f.SetBorderStyle(types.BsSingle)
-	f.SetOnShow(func(_ vcl.IObject) {
-		f.fixComboBox()
-	})
-	f.SetDoubleBuffered(true)
 
-	f.setupMenu()
-	f.setupContent()
-
-	f.fix = vcl.NewComboBox(f)
-	f.fix.SetParent(f)
-	f.fix.SetBounds(0, 0, 0, 0)
-	f.fix.SetStyle(types.CsDropDownList)
+	f.setupView()
 }

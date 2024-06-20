@@ -19,25 +19,17 @@ type Scanner struct {
 	loIp, gwIp net.IP
 	loHw, gwHw net.HardwareAddr
 
-	// pcap handle
-	handle  *pcap.Handle
-	options gopacket.SerializeOptions
-
 	// 超时时间
 	timeout time.Duration
 }
 
 func NewScanner() *Scanner {
 	return &Scanner{
-		options: gopacket.SerializeOptions{
-			FixLengths:       true,
-			ComputeChecksums: true,
-		},
-		timeout: 3 * time.Second,
+		timeout: 5 * time.Second,
 	}
 }
 
-func (s *Scanner) init(d Device) (err error) {
+func (s *Scanner) Init(d *Device) (err error) {
 	s.dev = d.Name
 	s.loIp = d.IpAddr
 	s.loHw = d.HwAddr
@@ -70,24 +62,37 @@ func (s *Scanner) init(d Device) (err error) {
 		SourceProtAddress: []byte(s.loIp),
 	}
 
-	s.handle, err = pcap.OpenLive(s.dev, 65535, true, pcap.BlockForever)
+	handle, err := pcap.OpenLive(s.dev, 65535, true, pcap.BlockForever)
 	if err != nil {
 		log.Error().
 			Str("1.dev", s.dev).
 			Err(errors.WithStack(err)).Msg("open device error")
 		return
 	}
-	err = s.write(en, arp)
+	buf := gopacket.NewSerializeBuffer()
+	ops := gopacket.SerializeOptions{
+		FixLengths:       true,
+		ComputeChecksums: true,
+	}
+	err = gopacket.SerializeLayers(buf, ops, en, arp)
 	if err != nil {
 		log.Error().
 			Str("1.dev", s.dev).
 			Str("2.loIp", s.loIp.String()).
 			Str("3.loHw", s.loHw.String()).
-			Str("4.gwIp", s.gwIp.String()).
-			Err(errors.WithStack(err)).Msg("send packet error")
+			Err(errors.WithStack(err)).Msg("build packet error")
+		return err
 	}
-	//defer s.handle.Close()
-	source := gopacket.NewPacketSource(s.handle, s.handle.LinkType())
+	err = handle.WritePacketData(buf.Bytes())
+	if err != nil {
+		log.Error().
+			Str("1.dev", s.dev).
+			Str("2.loIp", s.loIp.String()).
+			Str("3.loHw", s.loHw.String()).
+			Err(errors.WithStack(err)).Msg("write packet error")
+	}
+	defer handle.Close()
+	source := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range source.Packets() {
 		if layer := packet.Layer(layers.LayerTypeARP); layer != nil {
 			arp = layer.(*layers.ARP)
@@ -100,40 +105,33 @@ func (s *Scanner) init(d Device) (err error) {
 	return
 }
 
-func (s *Scanner) write(l ...gopacket.SerializableLayer) error {
-	buf := gopacket.NewSerializeBuffer()
-	err := gopacket.SerializeLayers(buf, s.options, l...)
+func (s *Scanner) Start(domains []string, nameservers []string) (ips map[string][]string) {
+	ips = make(map[string][]string)
+	for _, domain := range domains {
+		ips[domain] = make([]string, 0)
+	}
+
+	// 创建设备
+	read, err := pcap.OpenLive(s.dev, 65535, true, pcap.BlockForever)
 	if err != nil {
 		log.Error().
 			Str("1.dev", s.dev).
-			Str("2.loIp", s.loIp.String()).
-			Str("3.loHw", s.loHw.String()).
-			Err(errors.WithStack(err)).Msg("serialize packet error")
-		return err
+			Err(errors.WithStack(err)).Msg("open read device error")
+		return
 	}
-	return s.handle.WritePacketData(buf.Bytes())
-}
+	defer read.Close()
+	write, err := pcap.OpenLive(s.dev, 65535, true, pcap.BlockForever)
+	if err != nil {
+		log.Error().
+			Str("1.dev", s.dev).
+			Err(errors.WithStack(err)).Msg("open write device error")
+		return
+	}
+	defer write.Close()
 
-// DetectIps 探测 ip 按照延时排序
-func (s *Scanner) DetectIps(src []string) (dst []string) {
-	return src
-}
-
-// ResolveIps 解析域名对应的 ip 地址
-func (s *Scanner) ResolveIps(nss []string, domain string) (ips []string) {
-	ipm := make(map[string]bool)
 	go func() {
-		handle, err := pcap.OpenLive(s.dev, 65535, true, pcap.BlockForever)
-		if err != nil {
-			log.Error().
-				Str("1.dev", s.dev).
-				Err(errors.WithStack(err)).Msg("open device error")
-			return
-		}
-		defer handle.Close()
-
 		// 设置过滤条件
-		err = handle.SetBPFFilter("udp and port 53")
+		err = read.SetBPFFilter("udp and port 53")
 		if err != nil {
 			log.Error().
 				Str("1.dev", s.dev).
@@ -142,7 +140,7 @@ func (s *Scanner) ResolveIps(nss []string, domain string) (ips []string) {
 		}
 
 		// 读取 dns 响应包
-		source := gopacket.NewPacketSource(handle, handle.LinkType())
+		source := gopacket.NewPacketSource(read, read.LinkType())
 		for packet := range source.Packets() {
 			layer := packet.Layer(layers.LayerTypeDNS)
 			if layer == nil {
@@ -150,27 +148,22 @@ func (s *Scanner) ResolveIps(nss []string, domain string) (ips []string) {
 			}
 			dns, _ := layer.(*layers.DNS)
 			for _, q := range dns.Questions {
-				if string(q.Name) != domain {
-					continue
-				}
-				for _, a := range dns.Answers {
-					if a.IP.To4() == nil || a.IP.IsLoopback() {
-						continue
-					}
-					ip := a.IP.To4().String()
-					if ipm[ip] {
-						continue
-					} else {
-						ipm[ip] = true
+				if ip, ok := ips[string(q.Name)]; ok {
+					for _, a := range dns.Answers {
+						if a.IP.To4() == nil || a.IP.IsLoopback() {
+							continue
+						}
+
+						ip = append(ip, a.IP.To4().String())
 					}
 				}
 			}
 		}
 	}()
 
-	for i, ns := range nss {
+	for i, ns := range nameservers {
 		if i%100 == 0 {
-			time.Sleep(60 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 
 		en := &layers.Ethernet{
@@ -203,15 +196,33 @@ func (s *Scanner) ResolveIps(nss []string, domain string) (ips []string) {
 			ANCount:      0,
 			NSCount:      0,
 			ARCount:      0,
-			Questions: []layers.DNSQuestion{
-				{
-					Name:  []byte(domain),
-					Type:  layers.DNSTypeA,
-					Class: layers.DNSClassIN,
-				},
-			},
+			Questions:    make([]layers.DNSQuestion, 0),
 		}
-		err := s.write(en, ip, udp, dns)
+
+		// 一次性查询多个域名
+		for _, domain := range domains {
+			dns.Questions = append(dns.Questions, layers.DNSQuestion{
+				Name:  []byte(domain),
+				Type:  layers.DNSTypeA,
+				Class: layers.DNSClassIN,
+			})
+		}
+
+		buf := gopacket.NewSerializeBuffer()
+		ops := gopacket.SerializeOptions{
+			FixLengths:       true,
+			ComputeChecksums: true,
+		}
+		err = gopacket.SerializeLayers(buf, ops, en, ip, udp, dns)
+		if err != nil {
+			log.Error().
+				Str("1.dev", s.dev).
+				Str("2.loIp", s.loIp.String()).
+				Str("3.loHw", s.loHw.String()).
+				Err(errors.WithStack(err)).Msg("serialize packet error")
+			continue
+		}
+		err = write.WritePacketData(buf.Bytes())
 		if err != nil {
 			log.Error().
 				Str("1.dev", s.dev).
@@ -224,9 +235,5 @@ func (s *Scanner) ResolveIps(nss []string, domain string) (ips []string) {
 	}
 
 	time.Sleep(s.timeout) // 收集相应包
-	ips = make([]string, 0, len(ipm))
-	for ip := range ipm {
-		ips = append(ips, ip)
-	}
 	return ips
 }

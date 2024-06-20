@@ -12,7 +12,5 @@ func init() {
 
 func main() {
 	app := NewApp()
-	app.init()
-
-	app.showUI()
+	app.Run()
 }

@@ -22,7 +22,7 @@ func TestScanner_NetInfo(t *testing.T) {
 	d.Desc = "Realtek PCIe GbE Family Controller"
 
 	s := NewScanner()
-	err = s.init(d)
+	err = s.Init(&d)
 	if err != nil {
 		t.Fatal(err)
 	}
