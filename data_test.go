@@ -11,7 +11,7 @@ func Test_Data_GetNss(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nss := GetNameservers()
+	nss := LoadNameservers()
 	for i, ns := range nss {
 		t.Logf("%d: %s", i, ns)
 	}
@@ -23,7 +23,7 @@ func Test_Data_GetDomains(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	domains := GetDomains()
+	domains := LoadDomains()
 	for i, domain := range domains {
 		t.Logf("%d: %s", i, domain)
 	}

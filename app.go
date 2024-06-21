@@ -22,8 +22,6 @@ type App struct {
 
 	scanner *Scanner
 
-	devices []*Device
-
 	domains     []string
 	nameservers []string
 }
@@ -61,6 +59,7 @@ func (a *App) init() {
 
 func (a *App) showUI() {
 	vcl.DEBUG = false
+	vcl.Application.SetScaled(true)
 	vcl.Application.Initialize()
 	vcl.Application.SetMainFormOnTaskBar(true)
 
@@ -70,12 +69,7 @@ func (a *App) showUI() {
 	// 设置窗口显示事件
 	a.ui.SetOnShow(func(sender vcl.IObject) {
 		go func() {
-			a.renderDevs()
-			log.Info().Msg("init devices")
-		}()
-
-		go func() {
-			a.domains = GetDomains()
+			a.domains = LoadDomains()
 			vcl.ThreadSync(func() {
 				for _, domain := range a.domains {
 					if len(domain) > 0 {
@@ -86,68 +80,39 @@ func (a *App) showUI() {
 			log.Info().Msg("init domains")
 		}()
 		go func() {
-			a.nameservers = GetNameservers()
+			a.nameservers = LoadNameservers()
 			log.Info().Msg("init nameservers")
 		}()
 
-		// 配置按钮事件
 		a.ui.renewButton.SetOnClick(func(sender vcl.IObject) {
+			a.ui.disableView()
 			go func() {
-				a.renderDevs()
+				defer a.ui.enableView()
+
+				GetNameservers()
+				a.nameservers = LoadNameservers()
 			}()
 		})
 
 		a.ui.searchButton.SetOnClick(func(sender vcl.IObject) {
-			// 获取当前选中的网卡
-			i := a.ui.devsCombo.ItemIndex()
-			if i < 0 {
-				vcl.ShowMessage("请选择一个网卡")
-				return
-			}
 			a.ui.disableView()
-
 			go func() {
 				defer a.ui.enableView()
 
-				// 初始化扫描器
-				dev := a.devices[i]
 				a.scanner = NewScanner()
-				err := a.scanner.Init(dev)
-				if err != nil {
-					log.Error().
-						Str("1.dev", dev.String()).
-						Err(errors.WithStack(err)).Msg("scanner init error")
-					return
-				}
-				ret := a.scanner.Start(a.nameservers, a.domains)
-				for d, ips := range ret {
+				ips := a.scanner.Run(a.domains, a.nameservers)
+				for d, ss := range ips {
 					fmt.Println(d)
-					for _, ip := range ips {
-						fmt.Println(ip)
+					for _, s := range ss {
+						fmt.Println(s)
 					}
 				}
-
-				// 使用 ping 分别测速
 			}()
 		})
 	})
 
 	// 启动应用
 	vcl.Application.Run()
-}
-
-func (a *App) renderDevs() {
-	a.lock.Lock()
-	defer a.lock.Unlock()
-
-	dev := GetDevices()
-	vcl.ThreadSync(func() {
-		a.ui.devsCombo.Clear()
-		for _, d := range dev {
-			a.ui.devsCombo.Items().Add(d.String())
-		}
-		a.ui.devsCombo.SetItemHeight(30)
-	})
 }
 
 func (a *App) Run() {

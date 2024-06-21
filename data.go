@@ -18,27 +18,7 @@ var (
 	nameserversTempFile = "nameserversTemp.txt"
 )
 
-func GetDomains() []string {
-	domains, err := readLines(domainsFile)
-	if err != nil {
-		return nil
-	}
-	return domains
-}
-
-func GetNameservers() []string {
-	// 读取文件
-	nss, err := readLines(nameserversFile)
-	if err != nil {
-		log.Error().
-			Str("file", nameserversFile).
-			Err(errors.WithStack(err)).Msg("read nameservers file error")
-		return nss
-	}
-	return nss
-}
-
-func FetchNameservers() {
+func GetNameservers() {
 	// 不存在则同步
 	url := "https://public-dns.info/nameservers.txt"
 	_, err := resty.New().R().SetOutput(nameserversFile).Get(url)
@@ -94,4 +74,24 @@ func FetchNameservers() {
 		return
 	}
 	return
+}
+
+func LoadDomains() []string {
+	domains, err := readLines(domainsFile)
+	if err != nil {
+		return nil
+	}
+	return domains
+}
+
+func LoadNameservers() []string {
+	// 读取文件
+	nss, err := readLines(nameserversFile)
+	if err != nil {
+		log.Error().
+			Str("file", nameserversFile).
+			Err(errors.WithStack(err)).Msg("read nameservers file error")
+		return nss
+	}
+	return nss
 }

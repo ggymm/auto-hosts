@@ -13,7 +13,7 @@ func Test_Compare(t *testing.T) {
 		"3s": 3 * time.Second,
 	}
 	l := make([]string, 0)
-	for k, _ := range m {
+	for k := range m {
 		l = append(l, k)
 	}
 
@@ -30,5 +30,11 @@ func Test_Compare(t *testing.T) {
 
 	for _, s := range l {
 		t.Log(s)
+	}
+}
+
+func Test_randMillisecond(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		t.Log(randMillisecond())
 	}
 }

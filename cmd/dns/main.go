@@ -8,12 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcap"
 	"github.com/pkg/errors"
 
 	"auto-hosts/log"
@@ -57,18 +53,18 @@ func main() {
 
 	// 获取最新的 nameservers 并且按照响应时间排序
 	nss := fetchNameservers()
-	dst := filterNameservers(nss)
+	//nss = filterNameservers(nss)
 
 	// 保存 nameservers.txt 文件
-	f1, err := os.OpenFile(nameserversFile, os.O_TRUNC|os.O_RDWR, os.ModePerm)
-	if err != nil {
-		log.Error().
-			Str("file", nameserversFile).
-			Err(errors.WithStack(err)).Msg("open nameservers file error")
-		return
-	}
-	for i, s := range dst {
-		_, _ = f1.WriteString(s + "\n")
+	//f1, err := os.OpenFile(nameserversFile, os.O_TRUNC|os.O_RDWR, os.ModePerm)
+	//if err != nil {
+	//	log.Error().
+	//		Str("file", nameserversFile).
+	//		Err(errors.WithStack(err)).Msg("open nameservers file error")
+	//	return
+	//}
+	for i, s := range nss {
+		//_, _ = f1.WriteString(s + "\n")
 		log.Info().Msgf("%d: %s", i, s)
 	}
 }
@@ -133,117 +129,59 @@ func fetchNameservers() (nss []string) {
 	return
 }
 
-func filterNameservers(src []string) (dst []string) {
-	// 测试 nameservers 是否有效
-	dev := `\Device\NPF_{81A86FFA-2C4F-4E6B-AD4E-29036647FB75}`
-	loIp := net.IP{192, 168, 1, 27}
-	loHw := net.HardwareAddr{0x54, 0x05, 0xdb, 0x83, 0x7f, 0xa5}
-	//gwIp := net.IP{192, 168, 1, 1}
-	gwHw := net.HardwareAddr{0xa0, 0x04, 0x60, 0x92, 0xa6, 0x02}
+//func filterNameservers(src []string) (dst []string) {
+//	dst = make([]string, 0)
+//
+//	wg := new(sync.WaitGroup)
+//	for _, ns := range src {
+//		wg.Add(1)
+//		go func(ns string) {
+//			defer wg.Done()
+//
+//			p, err := ping.NewPinger(ns)
+//			if err != nil {
+//				log.Error().
+//					Str("remote", ns).
+//					Err(errors.WithStack(err)).Msg("ping nameserver error")
+//				return
+//			}
+//			p.SetPrivileged(true)
+//			p.Count = 1
+//			p.Timeout = 1 * time.Second
+//			err = p.Run()
+//			if err != nil {
+//				log.Error().
+//					Str("remote", ns).
+//					Err(errors.WithStack(err)).Msg("ping nameserver error")
+//				return
+//			}
+//			dst = append(dst, ns)
+//		}(ns)
+//	}
+//	wg.Wait()
+//	return dst
+//}
 
-	// 创建设备
-	send, err := pcap.OpenLive(dev, 65535, true, pcap.BlockForever)
-	if err != nil {
-		log.Error().
-			Str("1.dev", dev).
-			Err(errors.WithStack(err)).Msg("open send device error")
-		return
-	}
-	defer send.Close()
-	recv, err := pcap.OpenLive(dev, 65535, true, pcap.BlockForever)
-	if err != nil {
-		log.Error().
-			Str("1.dev", dev).
-			Err(errors.WithStack(err)).Msg("open recv device error")
-		return
-	}
-	defer recv.Close()
-
-	go func() {
-		err = recv.SetBPFFilter("dst host " + loIp.To4().String() + " and icmp")
-		if err != nil {
-			log.Error().
-				Str("1.dev", dev).
-				Err(errors.WithStack(err)).Msg("handle set bpf filter error")
-			return
-		}
-
-		// 读取 icmp 包
-		source := gopacket.NewPacketSource(recv, recv.LinkType())
-		for packet := range source.Packets() {
-			ipLayer := packet.Layer(layers.LayerTypeIPv4)
-			if ipLayer == nil {
-				return
-			}
-
-			icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
-			if icmpLayer == nil {
-				return
-			}
-			icmp := icmpLayer.(*layers.ICMPv4)
-			if icmp.TypeCode.Type() == layers.ICMPv4TypeEchoReply {
-				ip := ipLayer.(*layers.IPv4)
-				ns := ip.SrcIP.String()
-
-				log.Info().Msgf("recv packet from %s", ns)
-				dst = append(dst, ns)
-			}
-		}
-	}()
-
-	id := uint16(os.Getpid())
-	seq := uint16(0)
-	buf := gopacket.NewSerializeBuffer()
-	ops := gopacket.SerializeOptions{
-		FixLengths:       true,
-		ComputeChecksums: true,
-	}
-	for i, ns := range src {
-		if i%100 == 0 {
-			time.Sleep(100 * time.Millisecond)
-		}
-
-		en := &layers.Ethernet{
-			SrcMAC:       loHw,
-			DstMAC:       gwHw,
-			EthernetType: layers.EthernetTypeIPv4,
-		}
-		ip := &layers.IPv4{
-			Version:  4,
-			TTL:      64,
-			SrcIP:    loIp.To4(),
-			DstIP:    net.ParseIP(ns).To4(),
-			Protocol: layers.IPProtocolICMPv4,
-		}
-		icmp := &layers.ICMPv4{
-			Id:       id,
-			Seq:      seq,
-			TypeCode: layers.CreateICMPv4TypeCode(layers.ICMPv4TypeEchoRequest, 0),
-		}
-
-		err1 := gopacket.SerializeLayers(buf, ops, en, ip, icmp)
-		if err1 != nil {
-			log.Error().
-				Str("1.dev", dev).
-				Str("2.loIp", loIp.String()).
-				Str("3.loHw", loHw.String()).
-				Err(errors.WithStack(err1)).Msg("serialize packet error")
-			continue
-		}
-		err2 := send.WritePacketData(buf.Bytes())
-		if err2 != nil {
-			log.Error().
-				Str("1.dev", dev).
-				Str("2.loIp", loIp.String()).
-				Str("3.loHw", loHw.String()).
-				Err(errors.WithStack(err2)).Msg("write packet error")
-			continue
-		}
-
-		seq++
-		log.Info().Msgf("send packet to %s", ns)
-	}
-
-	time.Sleep(3 * time.Second) // 收集相应包
-	return
-}
+//func filterNameservers2(src []string) (dst []string) {
+//	dst = make([]string, 0)
+//
+//	c := new(dns.Client)
+//	c.Timeout = 1 * time.Second
+//	for _, ns := range src {
+//
+//		m := new(dns.Msg)
+//		m.SetQuestion("google.com.", dns.TypeA)
+//		m.RecursionDesired = true
+//
+//		// 发送 DNS 查询并接收响应
+//		_, _, err := c.Exchange(m, ns+":53")
+//		if err != nil {
+//			log.Error().
+//				Str("remote", ns).
+//				Err(errors.WithStack(err)).Msg("nameservers not available")
+//			continue
+//		}
+//		dst = append(dst, ns)
+//	}
+//	return dst
+//}

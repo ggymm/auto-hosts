@@ -8,7 +8,7 @@ import (
 type MainForm struct {
 	*vcl.TForm
 
-	devsCombo   *vcl.TComboBox
+	urlEdit     *vcl.TEdit
 	renewButton *vcl.TButton
 
 	domainMemo *vcl.TMemo
@@ -19,40 +19,47 @@ type MainForm struct {
 }
 
 func (f *MainForm) setupView() {
-	label := vcl.NewLabel(f)
-	label.SetParent(f)
-	label.SetCaption("选择网卡")
-	label.SetAutoSize(false)
-	label.SetAlignment(types.TaCenter)
+	enFont := vcl.NewFont()
+	//enFont.SetName("JetBrains Mono Medium")
+	enFont.SetName("Microsoft YaHei UI")
 
-	f.devsCombo = vcl.NewComboBox(f)
-	f.devsCombo.SetParent(f)
-	f.devsCombo.SetStyle(types.CsDropDownList)
+	zhFont := vcl.NewFont()
+	zhFont.SetName("Microsoft YaHei UI")
+
+	f.urlEdit = vcl.NewEdit(f)
+	f.urlEdit.SetParent(f)
+	f.urlEdit.SetFont(enFont)
+	f.urlEdit.SetText("https://public-dns.info/nameservers.txt")
+	f.urlEdit.SetAutoSelect(false)
 
 	f.renewButton = vcl.NewButton(f)
 	f.renewButton.SetParent(f)
-	f.renewButton.SetCaption("刷新网卡")
+	f.renewButton.SetFont(zhFont)
+	f.renewButton.SetCaption("同步 nameserver 列表")
 
-	label.SetBounds(20, 28, 80, 25)
-	f.devsCombo.SetBounds(100, 24, 480, 25)
-	f.renewButton.SetBounds(600, 24, 100, 25)
+	f.urlEdit.SetBounds(20, 24, 500, 25)
+	f.renewButton.SetBounds(540, 24, 160, 25)
 
 	f.domainMemo = vcl.NewMemo(f)
 	f.domainMemo.SetParent(f)
+	f.domainMemo.SetFont(enFont)
 	f.domainMemo.SetReadOnly(true)
 	f.domainMemo.SetScrollBars(types.SsAutoBoth)
 
 	f.resultMemo = vcl.NewMemo(f)
 	f.resultMemo.SetParent(f)
+	f.resultMemo.SetFont(enFont)
 	f.resultMemo.SetReadOnly(true)
 	f.resultMemo.SetScrollBars(types.SsAutoBoth)
 
 	f.searchButton = vcl.NewButton(f)
 	f.searchButton.SetParent(f)
+	f.searchButton.SetFont(zhFont)
 	f.searchButton.SetCaption("开始查询")
 
 	f.generateButton = vcl.NewButton(f)
 	f.generateButton.SetParent(f)
+	f.generateButton.SetFont(zhFont)
 	f.generateButton.SetCaption("生成文件")
 
 	f.domainMemo.SetBounds(20, 70, 330, 258)
@@ -62,7 +69,7 @@ func (f *MainForm) setupView() {
 }
 
 func (f *MainForm) enableView() {
-	f.devsCombo.SetEnabled(true)
+	f.urlEdit.SetEnabled(true)
 	f.renewButton.SetEnabled(true)
 
 	f.searchButton.SetEnabled(true)
@@ -70,7 +77,7 @@ func (f *MainForm) enableView() {
 }
 
 func (f *MainForm) disableView() {
-	f.devsCombo.SetEnabled(false)
+	f.urlEdit.SetEnabled(false)
 	f.renewButton.SetEnabled(false)
 
 	f.searchButton.SetEnabled(false)
