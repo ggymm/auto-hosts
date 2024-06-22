@@ -8,12 +8,12 @@ import (
 
 func main() {
 	m := new(dns.Msg)
-	m.SetQuestion("github.com.", dns.TypeA)
+	m.SetQuestion("google.com.", dns.TypeA)
 	m.RecursionDesired = true
 
 	c := new(dns.Client)
 	c.Timeout = 3 * time.Second
-	r, _, err := c.Exchange(m, "45.76.64.64:53")
+	r, _, err := c.Exchange(m, "61.216.168.145:53")
 	if err != nil {
 		panic(err)
 	}

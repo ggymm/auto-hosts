@@ -6,9 +6,6 @@ import (
 	"time"
 
 	"github.com/ggymm/dns"
-	"github.com/pkg/errors"
-
-	"auto-hosts/log"
 )
 
 type Scanner struct {
@@ -26,8 +23,8 @@ func (*Scanner) Run(domains, nameservers []string) map[string][]string {
 
 	for _, domain := range domains {
 		wg := &sync.WaitGroup{}
+		time.Sleep(1 * time.Second)
 
-		es := make([]string, 0)
 		ips := make([]string, 0)
 		for _, nameserver := range nameservers {
 			wg.Add(1)
@@ -40,16 +37,9 @@ func (*Scanner) Run(domains, nameservers []string) map[string][]string {
 				m.RecursionDesired = true
 
 				c := new(dns.Client)
-				c.Timeout = 3 * time.Second
+				c.Timeout = 5 * time.Second
 				r, _, err := c.Exchange(m, nameserver+":53")
 				if err != nil {
-					log.Error().
-						Str("domain", domain).
-						Str("nameserver", nameserver).
-						Err(errors.WithStack(err)).Msg("dns query failed")
-
-					// 添加到异常列表
-					es = append(es, nameserver)
 					return
 				}
 				if len(r.Answer) == 0 {
@@ -63,19 +53,6 @@ func (*Scanner) Run(domains, nameservers []string) map[string][]string {
 			}(domain, nameserver)
 		}
 		wg.Wait()
-
-		// 移除异常
-		for _, e := range es {
-			for i, nameserver := range nameservers {
-				if e == nameserver {
-					// 删除当前元素
-					nameservers = append(
-						nameservers[:i],
-						nameservers[i+1:]...,
-					)
-				}
-			}
-		}
 
 		// 收集结果
 		newIps := make([]string, 0)

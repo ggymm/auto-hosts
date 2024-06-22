@@ -68,34 +68,56 @@ func main() {
 	_ = fd.Close()
 
 	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn("github.com"), dns.TypeA)
+	m.SetQuestion(dns.Fqdn("google.com"), dns.TypeA)
 	m.RecursionDesired = true
 
-	wg := &sync.WaitGroup{}
 	dst := make([]string, 0)
-	for _, s := range src {
-		wg.Add(1)
-		go func(s string) {
-			defer wg.Done()
+	size := 10000
+	for i := 0; i < len(src); i += size {
+		end := i + size
+		if end > len(src) {
+			end = len(src)
+		}
 
-			c := new(dns.Client)
-			c.Timeout = 1 * time.Second
-			r, _, err1 := c.Exchange(m, s+":53")
-			if err1 != nil {
-				fmt.Println(err1)
-				return
-			}
-			dst = append(dst, s)
-			if len(r.Answer) != 0 {
-				for _, rr := range r.Answer {
-					fmt.Println(rr.String())
+		wg := &sync.WaitGroup{}
+		group := src[i:end]
+		for _, s := range group {
+			wg.Add(1)
+			go func(s string) {
+				defer wg.Done()
+
+				c := new(dns.Client)
+				c.Timeout = 1 * time.Second
+				r, _, err1 := c.Exchange(m, s+":53")
+				if err1 != nil {
+					if strings.Contains(err1.Error(), "timeout") {
+						return
+					}
+					fmt.Println(err1)
+					return
 				}
-			}
-		}(s)
+				dst = append(dst, s)
+				if len(r.Answer) != 0 {
+					for _, rr := range r.Answer {
+						fmt.Println(rr.String())
+					}
+				}
+			}(s)
+		}
+		wg.Wait()
+		time.Sleep(1 * time.Second)
 	}
-	wg.Wait()
 
+	// 保存 nameservers.txt 文件
+	f1, err := os.OpenFile(nameserversFile, os.O_TRUNC|os.O_RDWR, os.ModePerm)
+	if err != nil {
+		log.Error().
+			Str("file", nameserversFile).
+			Err(errors.WithStack(err)).Msg("open nameservers file error")
+		return
+	}
 	for i, s := range dst {
-		fmt.Println(i, s)
+		_, _ = f1.WriteString(s + "\n")
+		log.Info().Msgf("%d: %s", i, s)
 	}
 }
