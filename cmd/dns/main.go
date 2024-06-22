@@ -8,10 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
-	"time"
 
-	"github.com/ggymm/dns"
 	"github.com/go-resty/resty/v2"
 	"github.com/pkg/errors"
 
@@ -55,21 +52,7 @@ func main() {
 	_ = os.Remove(nameserversFile)
 
 	// 获取最新的 nameservers 并且按照响应时间排序
-	src := fetchNameservers()
-	dst := filterNameservers(src)
-
-	// 保存 nameservers.txt 文件
-	f1, err := os.OpenFile(nameserversFile, os.O_TRUNC|os.O_RDWR, os.ModePerm)
-	if err != nil {
-		log.Error().
-			Str("file", nameserversFile).
-			Err(errors.WithStack(err)).Msg("open nameservers file error")
-		return
-	}
-	for i, s := range dst {
-		_, _ = f1.WriteString(s + "\n")
-		log.Info().Msgf("%d: %s", i, s)
-	}
+	_ = fetchNameservers()
 }
 
 func fetchNameservers() (nss []string) {
@@ -130,30 +113,4 @@ func fetchNameservers() (nss []string) {
 		return
 	}
 	return
-}
-
-func filterNameservers(src []string) (dst []string) {
-	wg := &sync.WaitGroup{}
-	dst = make([]string, 0)
-	for _, ns := range src {
-		wg.Add(1)
-
-		go func(ns string) {
-			defer wg.Done()
-
-			m := new(dns.Msg)
-			m.SetQuestion(dns.Fqdn("github.com"), dns.TypeA)
-			m.RecursionDesired = true
-
-			c := new(dns.Client)
-			c.Timeout = 3 * time.Second
-			_, _, err := c.Exchange(m, ns+":53")
-			if err != nil {
-				return
-			}
-			dst = append(dst, ns)
-		}(ns)
-	}
-	wg.Wait()
-	return dst
 }

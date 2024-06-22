@@ -31,6 +31,7 @@ func (*Scanner) Run(domains, nameservers []string) map[string][]string {
 		ips := make([]string, 0)
 		for _, nameserver := range nameservers {
 			wg.Add(1)
+
 			go func(domain, nameserver string) {
 				defer wg.Done()
 
