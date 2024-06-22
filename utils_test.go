@@ -33,8 +33,32 @@ func Test_Compare(t *testing.T) {
 	}
 }
 
-func Test_randMillisecond(t *testing.T) {
-	for i := 0; i < 10; i++ {
-		t.Log(randMillisecond())
+func Test_Slice(t *testing.T) {
+	list := []string{
+		"1",
+		"2",
+		"3",
+		"4",
+		"5",
+	}
+	for n := 0; n < 2; n++ {
+		e := make([]string, 0)
+		for i, s := range list {
+			t.Logf("%d, %s", i, s)
+			if s == "2" {
+				e = append(e, s)
+			}
+			if s == "3" {
+				e = append(e, s)
+			}
+		}
+		for _, s := range e {
+			for i, s1 := range list {
+				if s == s1 {
+					list = append(list[:i], list[i+1:]...)
+				}
+			}
+		}
+		t.Log()
 	}
 }

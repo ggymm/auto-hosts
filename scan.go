@@ -26,10 +26,11 @@ func (*Scanner) Run(domains, nameservers []string) map[string][]string {
 
 	for _, domain := range domains {
 		wg := &sync.WaitGroup{}
+
+		es := make([]string, 0)
 		ips := make([]string, 0)
 		for _, nameserver := range nameservers {
 			wg.Add(1)
-
 			go func(domain, nameserver string) {
 				defer wg.Done()
 
@@ -45,12 +46,12 @@ func (*Scanner) Run(domains, nameservers []string) map[string][]string {
 						Str("domain", domain).
 						Str("nameserver", nameserver).
 						Err(errors.WithStack(err)).Msg("dns query failed")
+
+					// 添加到异常列表
+					es = append(es, nameserver)
 					return
 				}
 				if len(r.Answer) == 0 {
-					log.Error().
-						Str("domain", domain).
-						Str("nameserver", nameserver).Msg("no answer")
 					return
 				}
 				for _, answer := range r.Answer {
@@ -62,6 +63,20 @@ func (*Scanner) Run(domains, nameservers []string) map[string][]string {
 		}
 		wg.Wait()
 
+		// 移除异常
+		for _, e := range es {
+			for i, nameserver := range nameservers {
+				if e == nameserver {
+					// 删除当前元素
+					nameservers = append(
+						nameservers[:i],
+						nameservers[i+1:]...,
+					)
+				}
+			}
+		}
+
+		// 收集结果
 		newIps := make([]string, 0)
 		for _, ip := range ips {
 			if !slices.Contains(newIps, ip) {

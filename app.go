@@ -100,11 +100,11 @@ func (a *App) showUI() {
 				defer a.ui.enableView()
 
 				a.scanner = NewScanner()
-				ips := a.scanner.Run(a.domains, a.nameservers)
-				for d, ss := range ips {
+				ret := a.scanner.Run(a.domains, a.nameservers)
+				for d, ips := range ret {
 					fmt.Println(d)
-					for _, s := range ss {
-						fmt.Println(s)
+					for _, ip := range ips {
+						fmt.Println(ip)
 					}
 				}
 			}()

@@ -3,9 +3,7 @@ package main
 import (
 	"bufio"
 	"io"
-	"math/rand"
 	"os"
-	"time"
 )
 
 func isExist(name string) bool {
@@ -32,8 +30,4 @@ func readLines(name string) ([]string, error) {
 	}
 	_ = fd.Close()
 	return ls, nil
-}
-
-func randMillisecond() time.Duration {
-	return time.Duration(rand.Intn(1000)) * time.Millisecond
 }
