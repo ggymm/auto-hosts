@@ -8,14 +8,14 @@ import (
 )
 
 func main() {
-	pinger, err := ping.NewPinger("61.216.168.145")
-	pinger.Count = 4
-	pinger.Timeout = 1 * time.Second
-	pinger.SetPrivileged(true)
-	err = pinger.Run()
+	p, err := ping.NewPinger("8.8.8.8")
+	p.Count = 4
+	p.Timeout = 1 * time.Second
+	p.SetPrivileged(true)
+	err = p.Run()
 	if err != nil {
 		panic(err)
 	}
-	stats := pinger.Statistics()
-	fmt.Printf("%+v\n", stats)
+	stats := p.Statistics()
+	fmt.Println(stats.AvgRtt.String())
 }

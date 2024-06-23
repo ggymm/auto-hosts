@@ -1,9 +1,10 @@
 package main
 
 import (
-	"auto-hosts/log"
 	"fmt"
 	"testing"
+
+	"auto-hosts/log"
 )
 
 func TestScanner_Run(t *testing.T) {
@@ -20,9 +21,8 @@ func TestScanner_Run(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ret := s.Scan(domains, nameservers)
-	for d, ips := range ret {
-		fmt.Println(d)
+	for _, domain := range domains {
+		ips := s.Scan(domain, nameservers)
 		for _, ip := range ips {
 			fmt.Println(ip)
 		}

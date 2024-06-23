@@ -101,3 +101,25 @@ func Test_Sort(t *testing.T) {
 		t.Log(s)
 	}
 }
+
+func Test_Sort2(t *testing.T) {
+	list := []time.Duration{
+		1 * time.Second,
+		2 * time.Second,
+		100 * time.Millisecond,
+	}
+	slices.SortFunc(list, func(i, j time.Duration) int {
+		if i < j {
+			return -1
+		} else {
+			return 1
+		}
+	})
+	for _, s := range list {
+		t.Log(s)
+	}
+}
+
+func Test_Duration(t *testing.T) {
+	t.Log((10 * time.Millisecond).String())
+}

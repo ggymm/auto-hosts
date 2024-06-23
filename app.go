@@ -2,11 +2,14 @@ package main
 
 import (
 	"fmt"
+	"github.com/ggymm/ping"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/ying32/govcl/vcl"
@@ -15,20 +18,22 @@ import (
 )
 
 type App struct {
-	lock *sync.Mutex
+	mu *sync.Mutex
 
-	wd string
-	ui *MainForm
+	wd   string
+	view *MainForm
 
 	scanner *Scanner
 
+	hosts       []string
 	domains     []string
 	nameservers []string
 }
 
 func NewApp() *App {
 	return &App{
-		lock: &sync.Mutex{},
+		mu:      &sync.Mutex{},
+		scanner: NewScanner(),
 	}
 }
 
@@ -57,23 +62,34 @@ func (a *App) init() {
 	}
 }
 
-func (a *App) showUI() {
+func (a *App) showView() {
 	vcl.DEBUG = false
 	vcl.Application.SetScaled(true)
 	vcl.Application.Initialize()
 	vcl.Application.SetMainFormOnTaskBar(true)
 
 	// 创建主窗口
-	vcl.Application.CreateForm(&a.ui)
+	vcl.Application.CreateForm(&a.view)
 
 	// 设置窗口显示事件
-	a.ui.SetOnShow(func(sender vcl.IObject) {
+	a.view.SetOnShow(func(sender vcl.IObject) {
+		go func() {
+			a.hosts = LoadHosts()
+			vcl.ThreadSync(func() {
+				for _, host := range a.hosts {
+					if len(host) > 0 {
+						a.view.resultMemo.Lines().Add(host)
+					}
+				}
+			})
+			log.Info().Msg("init hosts")
+		}()
 		go func() {
 			a.domains = LoadDomains()
 			vcl.ThreadSync(func() {
 				for _, domain := range a.domains {
 					if len(domain) > 0 {
-						a.ui.domainMemo.Lines().Add(domain)
+						a.view.domainMemo.Lines().Add(domain)
 					}
 				}
 			})
@@ -84,28 +100,98 @@ func (a *App) showUI() {
 			log.Info().Msg("init nameservers")
 		}()
 
-		a.ui.renewButton.SetOnClick(func(sender vcl.IObject) {
-			a.ui.disableView()
+		a.view.renewButton.SetOnClick(func(sender vcl.IObject) {
+			a.view.disableView()
 			go func() {
-				defer a.ui.enableView()
+				defer a.view.enableView()
 
 				//RenewNameservers()
 				//a.nameservers = LoadNameservers()
 			}()
 		})
 
-		a.ui.searchButton.SetOnClick(func(sender vcl.IObject) {
-			a.ui.disableView()
+		a.view.searchButton.SetOnClick(func(sender vcl.IObject) {
+			a.view.disableView()
 			go func() {
-				defer a.ui.enableView()
+				// 重置 view 按钮状态
+				defer func() {
+					a.view.enableView()
+					a.view.searchButton.SetCaption("开始查询")
+				}()
 
-				a.scanner = NewScanner()
-				ret := a.scanner.Scan(a.domains, a.nameservers)
-				for d, ips := range ret {
-					fmt.Println(d)
-					for _, ip := range ips {
-						fmt.Println(ip)
+				l := len(a.domains)
+				for i, domain := range a.domains {
+					log.Info().Str("domain", domain).Msg("scan ip")
+					vcl.ThreadSync(func() {
+						a.view.searchButton.SetCaption(fmt.Sprintf("正在查询 （%d/%d）", i+1, l))
+					})
+
+					ip := ""
+					ips := make([]string, 0)
+					list := a.scanner.Scan(domain, a.nameservers)
+					if len(list) > 0 {
+						for _, item := range list {
+							ips = append(ips, item.String())
+
+							// ping 测速
+							p, _ := ping.NewPinger(item.ip)
+							p.Count = 4
+							p.Timeout = 1 * time.Second
+							p.SetPrivileged(true)
+							err := p.Run()
+							if err != nil {
+								continue
+							}
+							item.rtt = p.Statistics().AvgRtt
+
+							log.Info().
+								Str("1.ip", item.ip).
+								Str("2.rtt", item.rtt.String()).
+								Str("3.domain", domain).Msg("ping ip")
+						}
+
+						// 按照 rtt 排序
+						slices.SortFunc(list, func(i, j *Info) int {
+							if i.rtt < j.rtt {
+								return -1
+							} else {
+								return 1
+							}
+						})
+						ip = list[0].ip + " " + domain
+
+						// 保存到文件
+						err := writeLines(fmt.Sprintf("ips_%s.txt", domain), ips)
+						if err != nil {
+							log.Error().
+								Str("domain", domain).
+								Err(errors.WithStack(err)).Msg("write domain ips error")
+							continue
+						}
+					} else {
+						ip = "unknown"
 					}
+
+					vcl.ThreadSync(func() {
+						a.view.resultMemo.Lines().Add(ip)
+					})
+				}
+			}()
+		})
+
+		// 生成 hosts 文件
+		a.view.generateButton.SetOnClick(func(sender vcl.IObject) {
+			go func() {
+				list := make([]string, 0)
+				lines := a.view.resultMemo.Lines()
+				count := lines.Count()
+				for i := int32(0); i < count; i++ {
+					list = append(list, lines.S(i))
+				}
+				err := writeLines(hostsFile, list)
+				if err != nil {
+					log.Error().Err(errors.WithStack(err)).Msg("write hosts error")
+					return
 				}
 			}()
 		})
@@ -117,5 +203,5 @@ func (a *App) showUI() {
 
 func (a *App) Run() {
 	a.init()
-	a.showUI()
+	a.showView()
 }

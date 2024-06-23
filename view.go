@@ -44,13 +44,15 @@ func (f *MainForm) setupView() {
 	f.domainMemo.SetParent(f)
 	f.domainMemo.SetFont(enFont)
 	f.domainMemo.SetReadOnly(true)
-	f.domainMemo.SetScrollBars(types.SsAutoBoth)
+	f.domainMemo.SetWordWrap(false)
+	f.domainMemo.SetScrollBars(types.SsAutoVertical)
 
 	f.resultMemo = vcl.NewMemo(f)
 	f.resultMemo.SetParent(f)
 	f.resultMemo.SetFont(enFont)
 	f.resultMemo.SetReadOnly(true)
-	f.resultMemo.SetScrollBars(types.SsAutoBoth)
+	f.resultMemo.SetWordWrap(false)
+	f.resultMemo.SetScrollBars(types.SsAutoVertical)
 
 	f.searchButton = vcl.NewButton(f)
 	f.searchButton.SetParent(f)

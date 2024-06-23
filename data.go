@@ -2,15 +2,10 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"net"
 	"os"
-	"strings"
-	"sync"
-	"time"
 
-	"github.com/ggymm/dns"
 	"github.com/go-resty/resty/v2"
 	"github.com/pkg/errors"
 
@@ -18,15 +13,34 @@ import (
 )
 
 var (
+	hostsFile           = "hosts"
 	domainsFile         = "domains.txt"
 	nameserversFile     = "nameservers.txt"
 	nameserversTempFile = "nameserversTemp.txt"
 )
 
+var (
+	emptyList = make([]string, 0)
+)
+
+func LoadHosts() []string {
+	hosts, err := readLines(hostsFile)
+	if err != nil {
+		log.Error().
+			Str("file", hostsFile).
+			Err(errors.WithStack(err)).Msg("read hosts file error")
+		return emptyList
+	}
+	return hosts
+}
+
 func LoadDomains() []string {
 	domains, err := readLines(domainsFile)
 	if err != nil {
-		return nil
+		log.Error().
+			Str("file", domainsFile).
+			Err(errors.WithStack(err)).Msg("read domains file error")
+		return emptyList
 	}
 	return domains
 }
@@ -38,7 +52,7 @@ func LoadNameservers() []string {
 		log.Error().
 			Str("file", nameserversFile).
 			Err(errors.WithStack(err)).Msg("read nameservers file error")
-		return nss
+		return emptyList
 	}
 	return nss
 }
@@ -106,73 +120,4 @@ func FetchNameservers() {
 }
 
 func FilterNameservers() {
-	fd, err := os.OpenFile(nameserversFile, os.O_RDONLY, os.ModePerm)
-	if err != nil {
-		log.Error().
-			Str("file", nameserversFile).
-			Err(errors.WithStack(err)).Msg("read nameservers file error")
-		return
-	}
-	src := make([]string, 0)
-	buf := bufio.NewReader(fd)
-	for {
-		l, _, err1 := buf.ReadLine()
-		if err1 == io.EOF {
-			break
-		}
-		if err1 != nil {
-			continue
-		}
-		src = append(src, string(l))
-	}
-	_ = fd.Close()
-
-	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn("google.com"), dns.TypeA)
-	m.RecursionDesired = true
-
-	dst := make([]string, 0)
-	size := 5000
-	for i := 0; i < len(src); i += size {
-		end := i + size
-		if end > len(src) {
-			end = len(src)
-		}
-
-		wg := &sync.WaitGroup{}
-		group := src[i:end]
-		for _, s := range group {
-			wg.Add(1)
-			go func(s string) {
-				defer wg.Done()
-
-				c := new(dns.Client)
-				c.Timeout = 1 * time.Second
-				_, _, err1 := c.Exchange(m, s+":53")
-				if err1 != nil {
-					if strings.Contains(err1.Error(), "timeout") {
-						return
-					}
-					fmt.Println(err1)
-					return
-				}
-				dst = append(dst, s)
-			}(s)
-		}
-		wg.Wait()
-		time.Sleep(1 * time.Second)
-	}
-
-	// 保存 nameservers.txt 文件
-	fd, err = os.OpenFile(nameserversFile, os.O_TRUNC|os.O_RDWR, os.ModePerm)
-	if err != nil {
-		log.Error().
-			Str("file", nameserversFile).
-			Err(errors.WithStack(err)).Msg("open nameservers file error")
-		return
-	}
-	for _, s := range dst {
-		_, _ = fd.WriteString(s + "\n")
-	}
-	_ = fd.Close()
 }

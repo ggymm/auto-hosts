@@ -31,3 +31,15 @@ func readLines(name string) ([]string, error) {
 	_ = fd.Close()
 	return ls, nil
 }
+
+func writeLines(name string, lines []string) error {
+	f, err := os.OpenFile(name, os.O_TRUNC|os.O_CREATE|os.O_RDWR, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	for _, l := range lines {
+		_, _ = f.WriteString(l)
+		_, _ = f.WriteString("\n")
+	}
+	return f.Close()
+}
