@@ -20,7 +20,7 @@ func TestScanner_Run(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ret := s.Run(domains, nameservers)
+	ret := s.Scan(domains, nameservers)
 	for d, ips := range ret {
 		fmt.Println(d)
 		for _, ip := range ips {

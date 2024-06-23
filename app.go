@@ -89,8 +89,8 @@ func (a *App) showUI() {
 			go func() {
 				defer a.ui.enableView()
 
-				GetNameservers()
-				a.nameservers = LoadNameservers()
+				//RenewNameservers()
+				//a.nameservers = LoadNameservers()
 			}()
 		})
 
@@ -100,7 +100,7 @@ func (a *App) showUI() {
 				defer a.ui.enableView()
 
 				a.scanner = NewScanner()
-				ret := a.scanner.Run(a.domains, a.nameservers)
+				ret := a.scanner.Scan(a.domains, a.nameservers)
 				for d, ips := range ret {
 					fmt.Println(d)
 					for _, ip := range ips {

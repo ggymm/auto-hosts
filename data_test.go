@@ -5,26 +5,39 @@ import (
 	"testing"
 )
 
-func Test_Data_GetNss(t *testing.T) {
+func Test_Data_LoadDomains(t *testing.T) {
 	err := os.Chdir("data")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	nss := LoadNameservers()
-	for i, ns := range nss {
-		t.Logf("%d: %s", i, ns)
+	ss := LoadDomains()
+	for i, s := range ss {
+		t.Logf("%d: %s", i, s)
 	}
 }
 
-func Test_Data_GetDomains(t *testing.T) {
+func Test_Data_LoadNameservers(t *testing.T) {
 	err := os.Chdir("data")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	domains := LoadDomains()
-	for i, domain := range domains {
-		t.Logf("%d: %s", i, domain)
+	ss := LoadNameservers()
+	for i, s := range ss {
+		t.Logf("%d: %s", i, s)
+	}
+}
+
+func Test_Data_RenewNameservers(t *testing.T) {
+	err := os.Chdir("data")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	RenewNameservers()
+	ss := LoadNameservers()
+	for i, s := range ss {
+		t.Logf("%d: %s", i, s)
 	}
 }

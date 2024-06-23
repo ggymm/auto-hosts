@@ -2,54 +2,17 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"encoding/binary"
 	"io"
+	"net"
 	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
-	"sync"
-	"time"
-
-	"github.com/ggymm/dns"
-	"github.com/pkg/errors"
-
-	"auto-hosts/log"
+	"slices"
 )
-
-var (
-	nameserversFile = "nameservers.txt"
-)
-
-func init() {
-	dir := ""
-	exe, err := os.Executable()
-	if err != nil {
-		panic(err)
-	}
-	path := filepath.Base(exe)
-	if !strings.HasPrefix(exe, os.TempDir()) && !strings.HasPrefix(path, "___") {
-		dir = filepath.Dir(exe)
-	} else {
-		_, filename, _, ok := runtime.Caller(0)
-		if ok {
-			// 需要根据当前文件所处目录，修改相对位置
-			dir = filepath.Join(filepath.Dir(filename), "../../")
-		}
-	}
-	wd := filepath.Join(dir, "temp")
-
-	// 设置 app 工作目录
-	err = os.Chdir(wd)
-	if err != nil {
-		panic(errors.WithStack(err))
-	}
-
-	log.Init()
-}
 
 func main() {
-	fd, err := os.OpenFile(nameserversFile, os.O_RDONLY, os.ModePerm)
+	name := "data/nameservers.txt"
+
+	fd, err := os.OpenFile(name, os.O_RDONLY, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
@@ -67,57 +30,29 @@ func main() {
 	}
 	_ = fd.Close()
 
-	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn("google.com"), dns.TypeA)
-	m.RecursionDesired = true
+	slices.SortFunc(src, func(i, j string) int {
+		ip1 := net.ParseIP(i).To4()
+		ip2 := net.ParseIP(j).To4()
 
-	dst := make([]string, 0)
-	size := 10000
-	for i := 0; i < len(src); i += size {
-		end := i + size
-		if end > len(src) {
-			end = len(src)
+		int1 := binary.BigEndian.Uint32(ip1)
+		int2 := binary.BigEndian.Uint32(ip2)
+
+		if int1 < int2 {
+			return -1
+		} else if int1 > int2 {
+			return 1
+		} else {
+			return 0
 		}
-
-		wg := &sync.WaitGroup{}
-		group := src[i:end]
-		for _, s := range group {
-			wg.Add(1)
-			go func(s string) {
-				defer wg.Done()
-
-				c := new(dns.Client)
-				c.Timeout = 1 * time.Second
-				r, _, err1 := c.Exchange(m, s+":53")
-				if err1 != nil {
-					if strings.Contains(err1.Error(), "timeout") {
-						return
-					}
-					fmt.Println(err1)
-					return
-				}
-				dst = append(dst, s)
-				if len(r.Answer) != 0 {
-					for _, rr := range r.Answer {
-						fmt.Println(rr.String())
-					}
-				}
-			}(s)
-		}
-		wg.Wait()
-		time.Sleep(1 * time.Second)
-	}
+	})
 
 	// 保存 nameservers.txt 文件
-	f1, err := os.OpenFile(nameserversFile, os.O_TRUNC|os.O_RDWR, os.ModePerm)
+	fd, err = os.OpenFile(name, os.O_TRUNC|os.O_RDWR, os.ModePerm)
 	if err != nil {
-		log.Error().
-			Str("file", nameserversFile).
-			Err(errors.WithStack(err)).Msg("open nameservers file error")
-		return
+		panic(err)
 	}
-	for i, s := range dst {
-		_, _ = f1.WriteString(s + "\n")
-		log.Info().Msgf("%d: %s", i, s)
+	for _, s := range src {
+		_, _ = fd.WriteString(s + "\n")
 	}
+	_ = fd.Close()
 }

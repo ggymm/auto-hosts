@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/binary"
+	"net"
 	"slices"
 	"testing"
 	"time"
@@ -60,5 +62,42 @@ func Test_Slice(t *testing.T) {
 			}
 		}
 		t.Log()
+	}
+}
+
+func Test_Sort(t *testing.T) {
+	list := []string{
+		"1.1.1.1",
+		"1.2.4.8",
+		"8.8.8.8",
+		"185.222.222.222",
+		"45.11.45.11",
+		"101.101.101.101",
+		"94.140.14.14",
+		"223.5.5.5",
+		"119.29.29.29",
+		"180.76.76.76",
+		"101.226.4.6",
+		"114.114.114.114",
+		"208.67.222.222",
+		"9.9.9.9",
+	}
+	slices.SortFunc(list, func(i, j string) int {
+		ip1 := net.ParseIP(i).To4()
+		ip2 := net.ParseIP(j).To4()
+
+		int1 := binary.BigEndian.Uint32(ip1)
+		int2 := binary.BigEndian.Uint32(ip2)
+
+		if int1 < int2 {
+			return -1
+		} else if int1 > int2 {
+			return 1
+		} else {
+			return 0
+		}
+	})
+	for _, s := range list {
+		t.Log(s)
 	}
 }

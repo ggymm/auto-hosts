@@ -43,7 +43,7 @@ func LoadNameservers() []string {
 	return nss
 }
 
-func GetNameservers() {
+func RenewNameservers() {
 	FetchNameservers()
 	FilterNameservers()
 }
@@ -132,7 +132,7 @@ func FilterNameservers() {
 	m.RecursionDesired = true
 
 	dst := make([]string, 0)
-	size := 10000
+	size := 5000
 	for i := 0; i < len(src); i += size {
 		end := i + size
 		if end > len(src) {
