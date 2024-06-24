@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"testing"
-
-	"auto-hosts/log"
 )
 
 func TestScanner_Run(t *testing.T) {

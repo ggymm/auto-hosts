@@ -2,8 +2,6 @@ package main
 
 import (
 	_ "github.com/ying32/govcl/pkgs/winappres"
-
-	"auto-hosts/log"
 )
 
 func init() {

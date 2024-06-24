@@ -30,6 +30,7 @@ func (f *MainForm) setupView() {
 	f.urlEdit.SetParent(f)
 	f.urlEdit.SetFont(enFont)
 	f.urlEdit.SetText("https://public-dns.info/nameservers.txt")
+	f.urlEdit.SetReadOnly(true)
 	f.urlEdit.SetAutoSelect(false)
 
 	f.renewButton = vcl.NewButton(f)

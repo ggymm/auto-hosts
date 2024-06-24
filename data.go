@@ -8,8 +8,6 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/pkg/errors"
-
-	"auto-hosts/log"
 )
 
 var (

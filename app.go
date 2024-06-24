@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/ggymm/ping"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,10 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ggymm/ping"
 	"github.com/pkg/errors"
 	"github.com/ying32/govcl/vcl"
-
-	"auto-hosts/log"
 )
 
 type App struct {
@@ -112,6 +110,8 @@ func (a *App) showView() {
 
 		a.view.searchButton.SetOnClick(func(sender vcl.IObject) {
 			a.view.disableView()
+			a.view.resultMemo.Clear()
+
 			go func() {
 				// 重置 view 按钮状态
 				defer func() {
@@ -127,30 +127,37 @@ func (a *App) showView() {
 					})
 
 					ip := ""
-					ips := make([]string, 0)
 					list := a.scanner.Scan(domain, a.nameservers)
 					if len(list) > 0 {
+						wg := &sync.WaitGroup{}
 						for _, item := range list {
-							ips = append(ips, item.String())
-
-							// ping 测速
-							p, _ := ping.NewPinger(item.ip)
-							p.Count = 4
-							p.Timeout = 1 * time.Second
-							p.SetPrivileged(true)
-							err := p.Run()
-							if err != nil {
-								continue
-							}
-							item.rtt = p.Statistics().AvgRtt
-
+							wg.Add(1)
 							log.Info().
 								Str("1.ip", item.ip).
-								Str("2.rtt", item.rtt.String()).
 								Str("3.domain", domain).Msg("ping ip")
-						}
 
-						// 按照 rtt 排序
+							go func(item *Info) {
+								defer wg.Done()
+
+								p, _ := ping.NewPinger(item.ip)
+								p.Count = 4
+								p.Timeout = 1 * time.Second
+								p.SetPrivileged(true)
+								err := p.Run()
+								if err != nil {
+									return
+								}
+								stats := p.Statistics()
+								if stats.PacketsRecv == 4 {
+									item.rtt = stats.AvgRtt
+								} else {
+									item.rtt = 99 * time.Second
+								}
+							}(item)
+						}
+						wg.Wait()
+
+						// 排序
 						slices.SortFunc(list, func(i, j *Info) int {
 							if i.rtt < j.rtt {
 								return -1
@@ -161,7 +168,11 @@ func (a *App) showView() {
 						ip = list[0].ip + " " + domain
 
 						// 保存到文件
-						err := writeLines(fmt.Sprintf("ips_%s.txt", domain), ips)
+						ips := make([]string, 0)
+						for _, item := range list {
+							ips = append(ips, item.String())
+						}
+						err := writeLines(fmt.Sprintf("ips/%s.txt", domain), ips)
 						if err != nil {
 							log.Error().
 								Str("domain", domain).
@@ -193,6 +204,9 @@ func (a *App) showView() {
 					log.Error().Err(errors.WithStack(err)).Msg("write hosts error")
 					return
 				}
+				vcl.ThreadSync(func() {
+					vcl.ShowMessage("生成 hosts 文件成功")
+				})
 			}()
 		})
 	})

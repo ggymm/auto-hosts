@@ -11,8 +11,6 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/pkg/errors"
-
-	"auto-hosts/log"
 )
 
 var (
@@ -43,8 +41,6 @@ func init() {
 	if err != nil {
 		panic(errors.WithStack(err))
 	}
-
-	log.Init()
 }
 
 func main() {
@@ -60,10 +56,7 @@ func fetchNameservers() (nss []string) {
 	url := "https://public-dns.info/nameservers.txt"
 	_, err := resty.New().R().SetOutput(nameserversFile).Get(url)
 	if err != nil {
-		log.Error().
-			Str("url", url).
-			Err(errors.WithStack(err)).Msg("download nameservers error")
-		return
+		panic(err)
 	}
 
 	var (
@@ -72,16 +65,11 @@ func fetchNameservers() (nss []string) {
 	)
 	f1, err = os.OpenFile(nameserversFile, os.O_RDONLY, os.ModePerm)
 	if err != nil {
-		log.Error().
-			Str("file", nameserversFile).
-			Err(errors.WithStack(err)).Msg("read nameservers file error")
-		return
+		panic(err)
 	}
 	f2, err = os.OpenFile(nameserversTempFile, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
-		log.Error().
-			Str("file", nameserversTempFile).
-			Err(errors.WithStack(err)).Msg("create nameservers file error")
+		panic(err)
 	}
 	fb := bufio.NewReader(f1)
 	for {
@@ -106,11 +94,7 @@ func fetchNameservers() (nss []string) {
 	// 重命名文件
 	err = os.Rename(nameserversTempFile, nameserversFile)
 	if err != nil {
-		log.Error().
-			Str("file1", nameserversFile).
-			Str("file2", nameserversTempFile).
-			Err(errors.WithStack(err)).Msg("rename nameservers file error")
-		return
+		panic(err)
 	}
 	return
 }

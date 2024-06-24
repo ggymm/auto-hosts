@@ -1,4 +1,4 @@
-package log
+package main
 
 import (
 	"io"
@@ -8,6 +8,8 @@ import (
 	"github.com/rs/zerolog/pkgerrors"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
+
+var log = NewLog()
 
 const timeFormat = "2006-01-02 15:04:05.000"
 
@@ -27,7 +29,15 @@ func rollingFile(name string) io.Writer {
 	}
 }
 
-func Init(name ...string) {
+type Log struct {
+	log zerolog.Logger
+}
+
+func NewLog() *Log {
+	return &Log{}
+}
+
+func (l *Log) Init(name ...string) {
 	file := "app.log"
 	if len(name) > 0 {
 		file = name[0] + ".log"
@@ -40,5 +50,17 @@ func Init(name ...string) {
 
 	zerolog.TimeFieldFormat = timeFormat
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-	log = zerolog.New(writers).With().Caller().Timestamp().Logger()
+	l.log = zerolog.New(writers).With().Caller().Timestamp().Logger()
+}
+
+func (l *Log) Info() *zerolog.Event {
+	return l.log.Info()
+}
+
+func (l *Log) Error() *zerolog.Event {
+	return l.log.Error().Stack()
+}
+
+func (l *Log) Fatal() *zerolog.Event {
+	return l.log.Fatal().Stack()
 }
