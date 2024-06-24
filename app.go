@@ -140,7 +140,7 @@ func (a *App) showView() {
 								defer wg.Done()
 
 								p, _ := ping.NewPinger(item.ip)
-								p.Count = 4
+								p.Count = 4 // 尝试次数
 								p.Timeout = 1 * time.Second
 								p.SetPrivileged(true)
 								err := p.Run()
@@ -148,7 +148,7 @@ func (a *App) showView() {
 									return
 								}
 								stats := p.Statistics()
-								if stats.PacketsRecv == 4 {
+								if stats.PacketsRecv != 0 {
 									item.rtt = stats.AvgRtt
 								} else {
 									item.rtt = 99 * time.Second
