@@ -98,3 +98,5 @@
 
 
 ### 软件截图
+
+![image](https://github.com/ggymm/auto-hosts/assets/20694755/7b6f0053-7c2e-496e-b0e9-297fd92d95f2)
