@@ -1,4 +1,4 @@
-package main
+package autohosts
 
 import (
 	"bufio"

@@ -1,4 +1,4 @@
-package main
+package autohosts
 
 import (
 	"fmt"
@@ -6,8 +6,6 @@ import (
 )
 
 func TestScanner_Run(t *testing.T) {
-	log.Init("temp/app")
-
 	s := NewScanner()
 	domains := []string{
 		"github.com",

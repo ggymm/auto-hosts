@@ -1,4 +1,4 @@
-package main
+package autohosts
 
 import (
 	"io"
@@ -34,14 +34,8 @@ type Log struct {
 }
 
 func NewLog() *Log {
-	return &Log{}
-}
-
-func (l *Log) Init(name ...string) {
 	file := "app.log"
-	if len(name) > 0 {
-		file = name[0] + ".log"
-	}
+
 	// 设置日志文件路径
 	writers := io.MultiWriter(
 		rollingFile(file),
@@ -50,7 +44,9 @@ func (l *Log) Init(name ...string) {
 
 	zerolog.TimeFieldFormat = timeFormat
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-	l.log = zerolog.New(writers).With().Caller().Timestamp().Logger()
+	return &Log{
+		log: zerolog.New(writers).With().Caller().Timestamp().Logger(),
+	}
 }
 
 func (l *Log) Info() *zerolog.Event {

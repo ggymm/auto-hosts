@@ -1,4 +1,4 @@
-package main
+package autohosts
 
 import (
 	"github.com/ying32/govcl/vcl"
