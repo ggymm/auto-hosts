@@ -22,7 +22,7 @@ var (
 )
 
 func LoadHosts() []string {
-	hosts, err := readLines(hostsFile)
+	hosts, err := ReadLines(hostsFile)
 	if err != nil {
 		log.Error().
 			Str("file", hostsFile).
@@ -33,7 +33,7 @@ func LoadHosts() []string {
 }
 
 func LoadDomains() []string {
-	domains, err := readLines(domainsFile)
+	domains, err := ReadLines(domainsFile)
 	if err != nil {
 		log.Error().
 			Str("file", domainsFile).
@@ -45,7 +45,7 @@ func LoadDomains() []string {
 
 func LoadNameservers() []string {
 	// 读取文件
-	nss, err := readLines(nameserversFile)
+	nss, err := ReadLines(nameserversFile)
 	if err != nil {
 		log.Error().
 			Str("file", nameserversFile).

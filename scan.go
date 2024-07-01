@@ -9,15 +9,15 @@ import (
 )
 
 type Info struct {
-	ip         string
-	rtt        time.Duration
-	domain     string
-	nameserver string
+	Rtt        time.Duration
+	Addr       string
+	Domain     string
+	Nameserver string
 }
 
 func (i *Info) String() string {
-	rtt := i.rtt.Round(time.Millisecond).String()
-	return fmt.Sprintf("%s|%s|%s", i.ip, rtt, i.nameserver)
+	rtt := i.Rtt.Round(time.Millisecond).String()
+	return fmt.Sprintf("%s|%s|%s", i.Addr, rtt, i.Nameserver)
 }
 
 type Scanner struct {
@@ -54,10 +54,9 @@ func (*Scanner) Scan(domain string, nameservers []string) []*Info {
 					}
 					if _, exist := d.Load(ip); !exist {
 						d.Store(ip, &Info{
-							ip:         ip,
-							rtt:        0,
-							domain:     domain,
-							nameserver: nameserver,
+							Addr:       ip,
+							Domain:     domain,
+							Nameserver: nameserver,
 						})
 					}
 				}

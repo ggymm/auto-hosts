@@ -12,7 +12,7 @@ func TestScanner_Run(t *testing.T) {
 		"alive.github.com",
 		"api.github.com",
 	}
-	nameservers, err := readLines("data/nameservers.txt")
+	nameservers, err := ReadLines("data/nameservers.txt")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,12 +6,12 @@ import (
 	"os"
 )
 
-func isExist(name string) bool {
+func IsExist(name string) bool {
 	st, err := os.Stat(name)
 	return !os.IsNotExist(err) && !st.IsDir()
 }
 
-func readLines(name string) ([]string, error) {
+func ReadLines(name string) ([]string, error) {
 	fd, err := os.OpenFile(name, os.O_RDONLY, os.ModePerm)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func readLines(name string) ([]string, error) {
 	return ls, nil
 }
 
-func writeLines(name string, lines []string) error {
+func WriteLines(name string, lines []string) error {
 	f, err := os.OpenFile(name, os.O_TRUNC|os.O_CREATE|os.O_RDWR, os.ModePerm)
 	if err != nil {
 		return err

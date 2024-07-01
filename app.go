@@ -16,8 +16,6 @@ import (
 )
 
 type App struct {
-	mu *sync.Mutex
-
 	wd   string
 	view *MainForm
 
@@ -30,7 +28,6 @@ type App struct {
 
 func NewApp() *App {
 	return &App{
-		mu:      &sync.Mutex{},
 		scanner: NewScanner(),
 	}
 }
@@ -133,13 +130,13 @@ func (a *App) showView() {
 						for _, item := range list {
 							wg.Add(1)
 							log.Info().
-								Str("1.ip", item.ip).
+								Str("1.ip", item.Addr).
 								Str("3.domain", domain).Msg("ping ip")
 
 							go func(item *Info) {
 								defer wg.Done()
 
-								p, _ := ping.NewPinger(item.ip)
+								p, _ := ping.NewPinger(item.Addr)
 								p.Count = 4 // 尝试次数
 								p.Timeout = 1 * time.Second
 								p.SetPrivileged(true)
@@ -149,9 +146,9 @@ func (a *App) showView() {
 								}
 								stats := p.Statistics()
 								if stats.PacketsRecv != 0 {
-									item.rtt = stats.AvgRtt
+									item.Rtt = stats.AvgRtt
 								} else {
-									item.rtt = 99 * time.Second
+									item.Rtt = 99 * time.Second
 								}
 							}(item)
 						}
@@ -159,20 +156,20 @@ func (a *App) showView() {
 
 						// 排序
 						slices.SortFunc(list, func(i, j *Info) int {
-							if i.rtt < j.rtt {
+							if i.Rtt < j.Rtt {
 								return -1
 							} else {
 								return 1
 							}
 						})
-						ip = list[0].ip + " " + domain
+						ip = list[0].Addr + " " + domain
 
 						// 保存到文件
 						ips := make([]string, 0)
 						for _, item := range list {
 							ips = append(ips, item.String())
 						}
-						err := writeLines(fmt.Sprintf("ips/%s.txt", domain), ips)
+						err := WriteLines(fmt.Sprintf("ips/%s.txt", domain), ips)
 						if err != nil {
 							log.Error().
 								Str("domain", domain).
@@ -199,7 +196,7 @@ func (a *App) showView() {
 				for i := int32(0); i < count; i++ {
 					list = append(list, lines.S(i))
 				}
-				err := writeLines(hostsFile, list)
+				err := WriteLines(hostsFile, list)
 				if err != nil {
 					log.Error().Err(errors.WithStack(err)).Msg("write hosts error")
 					return
