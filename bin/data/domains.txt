@@ -38,3 +38,4 @@ user-images.githubusercontent.com
 private-user-images.githubusercontent.com
 vscode.dev
 education.github.com
+huggingface.co
