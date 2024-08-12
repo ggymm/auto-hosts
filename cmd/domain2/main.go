@@ -2,15 +2,14 @@ package main
 
 import (
 	"bufio"
-	"encoding/binary"
 	"io"
-	"net"
 	"os"
 	"slices"
+	"strings"
 )
 
 func main() {
-	name := "data/nameservers.txt"
+	name := "data/domains.txt"
 
 	fd, err := os.OpenFile(name, os.O_RDONLY, os.ModePerm)
 	if err != nil {
@@ -34,19 +33,8 @@ func main() {
 	_ = fd.Close()
 
 	slices.SortFunc(src, func(i, j string) int {
-		ip1 := net.ParseIP(i).To4()
-		ip2 := net.ParseIP(j).To4()
-
-		int1 := binary.BigEndian.Uint32(ip1)
-		int2 := binary.BigEndian.Uint32(ip2)
-
-		if int1 < int2 {
-			return -1
-		} else if int1 > int2 {
-			return 1
-		} else {
-			return 0
-		}
+		println(i, j)
+		return strings.Compare(i, j)
 	})
 
 	fd, err = os.OpenFile(name, os.O_TRUNC|os.O_RDWR, os.ModePerm)
